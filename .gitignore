@@ -1,0 +1,10 @@
+.env
+source_code/Agnetic_DS.code-workspace
+source_code/agents/__pycache__/agents.cpython-314.pyc
+source_code/__pycache__/tools.cpython-314.pyc
+source_code/__pycache__/state.cpython-314.pyc
+source_code/__pycache__/graph.cpython-314.pyc
+source_code/__pycache__/agents.cpython-314.pyc
+data/telecom_churn_data.csv
+data/churn_dataset_2.0.csv
+standardized_output.csv
