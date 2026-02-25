@@ -1,3 +1,7 @@
+
+![wallpaperflare com_wallpaper](https://github.com/user-attachments/assets/336c6c1a-bfc0-40e0-b3d4-6a5ea073ceeb)
+
+
 This repository contains the source code for the creation of an autonomous Data Science workflow for telecom industry
 The agent workflow in mind for now is as follows
 
