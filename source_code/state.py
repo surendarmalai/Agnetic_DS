@@ -1,10 +1,19 @@
 from typing import TypedDict, Optional
 
-# class passed between agents.    
 class AgentState(TypedDict):
-    file_path: str                      # Path to CSV
-    target_column: str                  # target column
-    metadata_summary: str               # Description of columns
-    cleaning_code: Optional[str]        # The Python code the Agent will generate
-    iteration_count: Optional[int]
-    error_log: Optional[str]            # To track self-correction loops
+    # ── Input ──────────────────────────────
+    file_path       : str
+    target_column   : str
+    metadata_summary: str
+    sql_query       : str
+    df_columns      : list
+    special_rules   : str
+
+    # ── Agent Outputs ───────────────────────
+    cleaning_code   : Optional[str]
+    ambiguous_fields: Optional[list]
+    column_map      : Optional[dict]
+
+    # ── Pipeline Control ────────────────────
+    iteration_count : Optional[int]
+    error_log       : Optional[str]
