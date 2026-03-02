@@ -1,4 +1,3 @@
-# tools.py
 import pandas as pd
 import traceback
 from source_code.state import AgentState
@@ -33,14 +32,11 @@ def code_executor_agent(state: AgentState) -> dict:
         # 4. Extract the newly modified dataframe
         df_clean = local_vars["df"]
 
-        # 5. Save the result to prove it worked!
+        # 5. Save the results
         output_path = "standardized_output.csv"
         df_clean.to_csv(output_path, index=False)
-        
-        print(f"[Executor] ✅ Success! Clean dataset saved to: {output_path}")
-        
-        # Return a clear error log since it succeeded
-        return {"error_log": None}
+        print(f"[Executor] ✅ Clean dataset saved to: {output_path}")
+        return {"error_log": None, "cleaned_file_path": output_path}
 
     except Exception as e:
         # If the AI wrote bad code, we catch the exact error message!
