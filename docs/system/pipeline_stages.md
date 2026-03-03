@@ -12,7 +12,7 @@ Full end-to-end pipeline for the churn product. This is the living reference for
 ---
 
 ## Stage 0 — Project Setup & Human Context Injection
-**Status:** 🗓 Planned (part of Streamlit UI)
+**Status:** 🔧 Partial (Streamlit upload form built; DB connection not yet wired)
 
 The user opens the system and provides upfront context before the pipeline starts:
 - Client name / project identifier
@@ -48,7 +48,7 @@ This context is loaded into `AgentState` as `special_rules` + uploaded file cont
 
 - Strips SQL aliases, lowercases column names
 - LLM maps raw names to PascalCase telecom-standard names via `make_field_renamer_agent(config)`
-- **[INTERRUPT]** Human resolves ambiguous column mappings (not yet wired — interrupt() not implemented)
+- **[INTERRUPT]** Human resolves ambiguous column mappings — ✅ wired via `interrupt()` in agent 1; `app.py` renders selectbox + custom text input per flagged column
 - `rename_executor_agent` applies composite rename map (no exec(); map reconstruction from `column_map` + `preprocess_column_names`)
 - Output saved to `standardized_output_renamed.csv`
 - `reclassify_columns_node` re-classifies columns on post-rename CSV before Stage 4
@@ -73,7 +73,7 @@ This context is loaded into `AgentState` as `special_rules` + uploaded file cont
 
 - Classifies columns: categorical / numeric-like (dirty) / true numeric (metadata refreshed by Stage 3.5)
 - LLM writes cleaning code via `make_field_cleaner_agent(config)`: fixes encoding, standardizes categoricals, converts dirty numerics
-- **[INTERRUPT]** Human reviews flagged columns that couldn't be safely cleaned (not yet wired — interrupt() not implemented)
+- **[INTERRUPT]** Human reviews flagged columns that couldn't be safely cleaned — ✅ wired via `interrupt()` in agent 2; `app.py` renders acknowledgment form; pipeline continues unchanged after confirm
 - `cleaning_executor_agent` runs cleaning code via exec() with `_check_safety` post-exec checks
 - Output saved to `output_agent2_cleaned.csv`
 

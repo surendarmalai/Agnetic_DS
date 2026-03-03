@@ -1,4 +1,5 @@
 import re
+from langgraph.types import interrupt
 from source_code.state import AgentState
 from source_code.utils import load_prompts
 from source_code.config.llm_config import PipelineConfig
@@ -116,6 +117,17 @@ def make_field_cleaner_agent(config: PipelineConfig):
             for f in flagged_columns:
                 print(f"  Column : {f.get('column')}")
                 print(f"  Reason : {f.get('reason')}\n")
+            try:
+                # interrupt() only works inside a LangGraph runnable context.
+                # When called directly (e.g. unit tests), RuntimeError is raised
+                # and we skip the pause — behaviour is identical to pre-interrupt.
+                interrupt({
+                    "type":    "flagged_columns",
+                    "columns": flagged_columns,
+                })
+                # return value discarded — user just acknowledges, pipeline continues
+            except RuntimeError:
+                pass
 
         print(f"[Agent 2] Cleaning code ready ({len(cleaning_code)} chars).\n")
 

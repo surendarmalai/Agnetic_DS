@@ -1,5 +1,6 @@
 import json
 import re
+from langgraph.types import interrupt
 from source_code.state import AgentState
 from source_code.utils import preprocess_column_names, load_prompts
 from source_code.config.llm_config import PipelineConfig
@@ -96,6 +97,20 @@ def make_field_renamer_agent(config: PipelineConfig):
             column_map = local_ns.get("rename_map", {})
         except Exception as e:
             print(f"[Agent 1] WARNING: Could not parse rename_map: {e}")
+
+        if ambiguous_fields:
+            try:
+                # interrupt() only works inside a LangGraph runnable context.
+                # When called directly (e.g. unit tests), RuntimeError is raised
+                # and we skip the pause — behaviour is identical to pre-interrupt.
+                user_decisions = interrupt({
+                    "type":   "ambiguous_fields",
+                    "fields": ambiguous_fields,
+                })
+                if isinstance(user_decisions, dict):
+                    column_map.update(user_decisions)
+            except RuntimeError:
+                pass
 
         return {
             "cleaning_code": rename_code,

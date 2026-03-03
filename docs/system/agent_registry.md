@@ -31,7 +31,7 @@ All agents in the pipeline. Update this file whenever an agent is added, modifie
 - `ambiguous_fields` — list of `{original_column, candidates, reason, sample_values}`
 - `column_map` — `{original: standardized}` audit dict consumed by `rename_executor_agent`
 
-**Interrupt:** Yes — surfaces `ambiguous_fields` for human resolution before executor runs. (Not yet wired — interrupt() not implemented.)
+**Interrupt:** Yes — fires `interrupt({"type": "ambiguous_fields", "fields": [...]})` after parsing if any fields are flagged. `user_decisions` (dict of `{original_col: chosen_name}`) is applied via `column_map.update(user_decisions)` on resume. Wired in `app.py` via `_render_ambiguous_fields_form`.
 
 **Output contract:** 2 code blocks — rename code, then ambiguous_fields assignment.
 
@@ -61,7 +61,7 @@ All agents in the pipeline. Update this file whenever an agent is added, modifie
 - `cleaning_code` — Python cleaning code executed by `cleaning_executor_agent`
 - `flagged_columns` — list of `{column, reason}` for columns that couldn't be safely cleaned
 
-**Interrupt:** Yes — surfaces `flagged_columns` for human review. (Not yet wired — interrupt() not implemented.)
+**Interrupt:** Yes — fires `interrupt({"type": "flagged_columns", "columns": [...]})` after printing if any columns are flagged. Resume value is discarded — user acknowledgment only, pipeline continues unchanged. Wired in `app.py` via `_render_flagged_columns_form`.
 
 **Output contract:** 2 code blocks — cleaning code, then flagged_columns assignment.
 

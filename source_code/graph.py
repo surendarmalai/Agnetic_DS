@@ -7,7 +7,7 @@ from source_code.agents.executor import rename_executor_agent, cleaning_executor
 from source_code.reclassify import reclassify_columns_node   # [AUDIT M8] top-level, not agents/
 
 
-def build_graph(config: PipelineConfig):
+def build_graph(config: PipelineConfig, checkpointer=None):
     """
     Build and compile the DS Machine LangGraph workflow.
 
@@ -47,4 +47,4 @@ def build_graph(config: PipelineConfig):
     workflow.add_edge("agent2_cleaner",     "executor2")
     workflow.add_edge("executor2",          END)
 
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)

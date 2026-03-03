@@ -68,16 +68,17 @@ LangGraph Graph (ds_machine)
 
 Uses LangGraph's `interrupt()` + `Command(resume=...)` pattern.
 
-**Every interrupt payload has this structure:**
-```python
-{
-  "type": "ambiguous_columns" | "query_approval" | "feature_suggestion" | "eval_review" | "report_review",
-  "data": { ... },          # agent-specific data to display
-  "prompt": "..."           # instruction shown to the user
-}
-```
+**Interrupt payload structure (actual, as implemented):**
 
-The Streamlit `interrupt_panel` component reads `type` and renders the appropriate UI (table, text input, file uploader, metric dashboard, etc.).
+| Agent | `type` key | Payload key | Content |
+|---|---|---|---|
+| Agent 1 | `"ambiguous_fields"` | `"fields"` | `[{original_column, candidates, reason, sample_values}]` |
+| Agent 2 | `"flagged_columns"` | `"columns"` | `[{column, reason}]` |
+
+**Planned types (future agents):**
+- `"query_approval"`, `"feature_suggestion"`, `"eval_review"`, `"report_review"`
+
+`app.py` reads `interrupt_payload["type"]` and dispatches to the appropriate render function.
 
 **Resuming the graph:**
 ```python
@@ -97,6 +98,30 @@ ds_machine.invoke(Command(resume=user_feedback), config={"configurable": {"threa
 
 ## Streamlit App Structure
 
+**Current (MVP — single file):**
+```
+app.py                       ← Single-file Streamlit app (root level)
+```
+
+Run: `.venv\Scripts\streamlit.exe run app.py` → http://localhost:8501
+
+**Pages (sidebar radio):**
+- **Run Pipeline** — CSV upload, pipeline execution, interrupt forms, results + download
+- **Database** — placeholder (coming soon)
+
+**Session state machine:**
+```
+idle → running → interrupted → running → complete
+                             → error
+```
+
+**Interrupt forms rendered by `app.py`:**
+- `ambiguous_fields` → `_render_ambiguous_fields_form()` — selectbox + custom text input per flagged column
+- `flagged_columns`  → `_render_flagged_columns_form()` — acknowledgment only, pipeline continues
+
+**Checkpointing:** `MemorySaver` (in-memory, resets on app restart). Future: `SqliteSaver` for dev, `PostgresSaver` for prod.
+
+**Planned multi-file structure (future):**
 ```
 app/
   main.py                    ← Entry point, routing
