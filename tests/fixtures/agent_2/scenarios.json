@@ -1,0 +1,73 @@
+{
+  "happy_path": {
+    "llm_response": "```python\nimport numpy as np\n\n# \u2500\u2500 CATEGORICAL CLEANING \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif 'Gender' in df.columns:\n    df['Gender'] = df['Gender'].str.strip().str.title()\n    df['Gender'] = df['Gender'].replace({\n        'M'   : 'Male',\n        'Male' : 'Male',\n        'F'   : 'Female',\n        'Female': 'Female',\n        'N/A' : None,\n        'NA'  : None,\n    })\n\nif 'RegionCode' in df.columns:\n    df['RegionCode'] = df['RegionCode'].str.strip().str.title()\n\nif 'PlanType' in df.columns:\n    df['PlanType'] = df['PlanType'].str.strip()\n    df['PlanType'] = df['PlanType'].replace({\n        'PRE-PAID' : 'Prepaid',\n        'prepaid'  : 'Prepaid',\n        'POST-PAID': 'Postpaid',\n        'postpaid' : 'Postpaid',\n    })\n\n# \u2500\u2500 NUMERIC-LIKE CLEANING \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif 'RevenueLast30d' in df.columns:\n    df['RevenueLast30d'] = df['RevenueLast30d'].astype(str).str.strip()\n    df['RevenueLast30d'] = df['RevenueLast30d'].str.replace(',', '', regex=False)\n    df['RevenueLast30d'] = df['RevenueLast30d'].where(\n        df['RevenueLast30d'].str.match(r'^-?\\d+(\\.\\d+)?$', na=False), None\n    )\n```\n\n```python\nflagged_columns = []\n```",
+    "description": "Valid two-block response. Categorical and numeric-like columns all cleaned.",
+    "expected_assertions": {
+      "cleaning_code_non_empty": true,
+      "flagged_columns_empty": true,
+      "cleaning_code_contains": "df['Gender']",
+      "output_path_set": true
+    }
+  },
+  "metadata_context_injection": {
+    "llm_response": "```python\nimport numpy as np\n\nif 'Gender' in df.columns:\n    df['Gender'] = df['Gender'].str.strip().str.title()\n    df['Gender'] = df['Gender'].replace({'M': 'Male', 'F': 'Female', 'N/A': None})\n```\n\n```python\nflagged_columns = []\n```",
+    "description": "Tests that value_counts_summary and null_summary are injected into prompt. SQL query must NOT be injected.",
+    "expected_assertions": {
+      "prompt_contains_value_counts": true,
+      "prompt_contains_null_summary": true,
+      "prompt_does_not_contain_select": true,
+      "cleaning_code_non_empty": true
+    }
+  },
+  "missing_second_block": {
+    "llm_response": "```python\nimport numpy as np\n\nif 'Gender' in df.columns:\n    df['Gender'] = df['Gender'].str.strip().str.title()\n```",
+    "description": "Only one code block returned — no flagged_columns block.",
+    "expected_assertions": {
+      "cleaning_code_non_empty": true,
+      "flagged_columns_empty": true,
+      "flagged_columns_not_none": true
+    }
+  },
+  "no_code_blocks": {
+    "llm_response": "The data appears to be already clean. No transformations required.",
+    "description": "LLM returns plain prose, no fenced code blocks.",
+    "expected_assertions": {
+      "cleaning_code_empty": true,
+      "flagged_columns_empty": true
+    }
+  },
+  "flagged_columns_missing_keys": {
+    "llm_response": "```python\nimport numpy as np\n\nif 'Gender' in df.columns:\n    df['Gender'] = df['Gender'].str.strip()\n```\n\n```python\nflagged_columns = [\n    {\"column\": \"RevenueLast30d\"}\n]\n```",
+    "description": "flagged_columns entry has only 'column', missing 'reason'.",
+    "expected_assertions": {
+      "flagged_columns_non_empty": true,
+      "flagged_columns_0_reason_is_none": true,
+      "no_exception_raised": true
+    }
+  },
+  "cleaning_code_introduces_new_nulls": {
+    "llm_response": "```python\nimport numpy as np\n\nif 'Gender' in df.columns:\n    df['Gender'] = df['Gender'].replace({'Male': None, 'Female': None})\n```\n\n```python\nflagged_columns = []\n```",
+    "description": "Cleaning code replaces all valid Gender values with None — known gap in null detection. Executor should warn.",
+    "expected_assertions": {
+      "executor_error_log_non_none": true,
+      "executor_error_log_contains_warning": true
+    }
+  },
+  "cleaning_code_drops_columns": {
+    "llm_response": "```python\nimport numpy as np\n\ndf = df.drop(columns=['RegionCode'])\n```\n\n```python\nflagged_columns = []\n```",
+    "description": "Cleaning code drops a column. Executor's column-drop detection should fire.",
+    "expected_assertions": {
+      "executor_error_log_non_none": true,
+      "executor_error_log_contains_warning": true
+    }
+  },
+  "malformed_python": {
+    "llm_response": "```python\nimport numpy as np\n\nif 'Gender' in df.columns\n    df['Gender'] = df['Gender'].str.strip()\n```\n\n```python\nflagged_columns = []\n```",
+    "description": "Syntax error in cleaning block — missing colon after if condition.",
+    "expected_assertions": {
+      "cleaning_code_non_empty": true,
+      "no_exception_from_agent": true,
+      "executor_error_log_contains_syntax_error": true
+    }
+  }
+}

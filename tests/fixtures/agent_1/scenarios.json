@@ -1,0 +1,84 @@
+{
+  "happy_path": {
+    "llm_response": "```python\nrename_map = {\n    \"msisdn\": \"Msisdn\",\n    \"gender\": \"Gender\",\n    \"rev_30d\": \"RevenueLast30d\",\n    \"mou_out_30d\": \"MouOutgoingLast30d\",\n    \"data_vol_30d\": \"DataUsageLast30dKb\",\n    \"churn_flag\": \"ChurnFlag\",\n    \"tenure_months\": \"TenureMonths\",\n    \"region_cd\": \"RegionCode\",\n    \"plan_type\": \"PlanType\",\n    \"contract_end_dt\": \"ContractEndDate\"\n}\ndf = df.rename(columns=rename_map)\n```\n\n```python\nambiguous_fields = []\n```",
+    "description": "Valid two-block response. All 10 sample_telecom columns covered. rename_map keys use cleaned names (alias-stripped, lowercased).",
+    "expected_assertions": {
+      "column_map_len": 10,
+      "ambiguous_fields_empty": true,
+      "cleaning_code_non_empty": true,
+      "cleaning_code_contains": "df.rename",
+      "prompt_received": true
+    }
+  },
+  "sql_context_alias_resolution": {
+    "llm_response": "```python\nrename_map = {\n    \"msisdn\": \"Msisdn\",\n    \"gender\": \"Gender\",\n    \"rev_30d\": \"RevenueLast30d\",\n    \"mou_out_30d\": \"MouOutgoingLast30d\",\n    \"data_vol_30d\": \"DataUsageLast30dKb\",\n    \"churn_flag\": \"ChurnFlag\",\n    \"tenure_months\": \"TenureMonths\",\n    \"region_cd\": \"RegionCode\",\n    \"plan_type\": \"PlanType\",\n    \"contract_end_dt\": \"ContractEndDate\"\n}\ndf = df.rename(columns=rename_map)\n```\n\n```python\nambiguous_fields = []\n```",
+    "description": "LLM correctly resolves rev_30d to RevenueLast30d given SQL context with alias a.rev_30d.",
+    "expected_assertions": {
+      "column_map_key_rev_30d": "RevenueLast30d",
+      "prompt_contains_sql": true,
+      "ambiguous_fields_empty": true
+    }
+  },
+  "missing_second_block": {
+    "llm_response": "```python\nrename_map = {\n    \"msisdn\": \"Msisdn\",\n    \"gender\": \"Gender\"\n}\ndf = df.rename(columns=rename_map)\n```",
+    "description": "Only one code block returned — no ambiguous_fields block.",
+    "expected_assertions": {
+      "cleaning_code_non_empty": true,
+      "ambiguous_fields_empty": true,
+      "ambiguous_fields_not_none": true
+    }
+  },
+  "no_code_blocks": {
+    "llm_response": "I cannot determine the column mappings without additional context about the schema.",
+    "description": "LLM returns plain prose, no fenced code blocks.",
+    "expected_assertions": {
+      "cleaning_code_empty": true,
+      "ambiguous_fields_empty": true,
+      "column_map_empty": true
+    }
+  },
+  "duplicate_values_in_rename_map": {
+    "llm_response": "```python\nrename_map = {\n    \"msisdn\": \"Msisdn\",\n    \"mobile_no\": \"Msisdn\"\n}\ndf = df.rename(columns=rename_map)\n```\n\n```python\nambiguous_fields = []\n```",
+    "description": "Two keys map to same clean name. Known gap: agent does not detect duplicate values.",
+    "expected_assertions": {
+      "column_map_non_empty": true,
+      "no_exception_raised": true,
+      "column_map_values_unique": true
+    }
+  },
+  "missing_columns_from_rename_map": {
+    "llm_response": "```python\nrename_map = {\n    \"msisdn\": \"Msisdn\",\n    \"gender\": \"Gender\"\n}\ndf = df.rename(columns=rename_map)\n```\n\n```python\nambiguous_fields = []\n```",
+    "description": "Only 2 of 10 columns covered in rename_map. Known gap: partial coverage silently accepted.",
+    "expected_assertions": {
+      "column_map_len": 2,
+      "column_map_len_equals_df_columns": false
+    }
+  },
+  "ambiguous_fields_missing_keys": {
+    "llm_response": "```python\nrename_map = {\n    \"gender\": \"Gender\"\n}\ndf = df.rename(columns=rename_map)\n```\n\n```python\nambiguous_fields = [\n    {\"original_column\": \"gender\"}\n]\n```",
+    "description": "ambiguous_fields entry has only 'original_column', missing 'candidates' and 'reason'.",
+    "expected_assertions": {
+      "ambiguous_fields_non_empty": true,
+      "ambiguous_fields_0_candidates_is_none": true,
+      "no_exception_raised": true
+    }
+  },
+  "keys_dont_match_df_columns": {
+    "llm_response": "```python\nrename_map = {\n    \"subscriber_id\": \"Msisdn\",\n    \"phone_number\": \"AlternatePhone\"\n}\ndf = df.rename(columns=rename_map)\n```\n\n```python\nambiguous_fields = []\n```",
+    "description": "rename_map keys reference columns not present in the test DataFrame (a.msisdn, etc.).",
+    "expected_assertions": {
+      "column_map_non_empty": true,
+      "no_exception_raised": true,
+      "all_keys_in_df_columns": false
+    }
+  },
+  "malformed_python": {
+    "llm_response": "```python\nrename_map = {\n    \"msisdn\": \"Msisdn\"\ndf = df.rename(columns=rename_map)\n```\n\n```python\nambiguous_fields = []\n```",
+    "description": "Syntax error in rename code — missing closing brace on the dict literal.",
+    "expected_assertions": {
+      "column_map_empty": true,
+      "cleaning_code_non_empty": true,
+      "no_exception_raised": true
+    }
+  }
+}

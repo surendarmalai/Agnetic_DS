@@ -105,3 +105,59 @@ Key decisions made during development, with rationale. Consult this before propo
 - LLM-agnostic: any AI assistant (Claude, GPT, Gemini) can read markdown files
 - Git-tracked: knowledge evolves with the codebase
 - Context-efficient: a new session reads only the digest of relevant features, not full conversation history
+
+---
+
+## ADR-008 — LLM abstraction via PipelineConfig + LLMFactory
+**Date:** 2026-03-03
+**Status:** Accepted
+
+**Decision:** All LLM instantiation goes through `LLMFactory.create()`. Agent files never import a provider package directly. LLM selection is stored in `PipelineConfig` (a plain Python dataclass), which is constructed once per pipeline session and passed to `build_graph(config)`. `PipelineConfig` is never stored in `AgentState`.
+
+**Rationale:**
+- Before this ADR, each agent imported `ChatGroq` directly. Switching providers required touching every agent file.
+- With `LLMFactory`, adding or changing a provider requires changes in exactly one place.
+- `PipelineConfig.with_mock(mock)` provides a clean, one-line injection path for tests — no monkeypatching.
+- `PipelineConfig.from_env()` provides a clean production path driven by environment variables.
+- Deferred imports inside `LLMFactory.create()` branches mean only the installed provider's package is required at runtime.
+
+**Alternatives considered:**
+- Storing the LLM instance in `AgentState` — rejected because AgentState is a serializable TypedDict (required for LangGraph checkpointing); live LLM objects are not serializable.
+- Per-agent factory functions that each read from environment — rejected because it scatters LLM config logic and makes per-agent overrides inconsistent.
+
+**Per-agent override pattern:** `PipelineConfig(agent_overrides={"agent1": LLMConfig(provider="openai", model="gpt-4o")})`. `get_llm_config(agent_name)` returns the override if registered, otherwise `default_llm`.
+
+---
+
+## ADR-009 — Executor split: rename_executor_agent uses composite map, not exec()
+**Date:** 2026-03-03
+**Status:** Accepted
+
+**Decision:** The single `code_executor_agent` is replaced by two distinct functions: `rename_executor_agent` (no exec) and `cleaning_executor_agent` (exec with safety checks).
+
+**Rationale:**
+- The rename step is deterministic and safe to express as a dict-based `df.rename(columns=composite_map)`. Running exec() for a rename is unnecessary and introduces a code injection surface with no benefit.
+- Agent 1 produces a `column_map` audit dict (the canonical source of truth for what was renamed). The executor reconstructs the composite rename from this dict + `preprocess_column_names`. This means the rename is always reproducible from the audit trail, not from an exec'd code string.
+- The cleaning step genuinely requires exec() because Agent 2 writes arbitrary pandas transformation code. The exec scope includes `pd`, `np`, and `__builtins__` to support numpy operations.
+- Separating the functions makes each independently testable and clearly communicates intent.
+
+**Safety checks in `cleaning_executor_agent`:** After exec, `_check_safety(df_before, df_after)` detects dropped columns (set difference) and new null values (sum difference). Warnings are appended to `error_log` — the pipeline does not abort. This is intentional: a future interrupt() hook will surface these warnings to the human operator.
+
+**Data chain:** `rename_executor_agent` reads `state["file_path"]` (original CSV). `cleaning_executor_agent` reads `state["output_path"]` (post-rename CSV). The distinction is enforced in code and tested (TC19, TC20).
+
+---
+
+## ADR-010 — reclassify_columns_node as a separate graph node in source_code/reclassify.py
+**Date:** 2026-03-03
+**Status:** Accepted
+
+**Decision:** Column reclassification (re-running `classify_columns`, `build_value_counts_summary`, `build_null_summary` on the post-rename DataFrame) is a dedicated graph node placed between `executor1` and `agent2_cleaner`. It lives in `source_code/reclassify.py`, not in `source_code/agents/`.
+
+**Rationale:**
+- Agent 2 needs column metadata computed from the post-rename DataFrame. Before this node existed, Agent 2 received metadata from `main.py` computed on the pre-rename DataFrame — column names would be wrong (still aliased, pre-standardization).
+- Placing the reclassification inside Agent 2 would couple a pure data operation to the LLM call, making it untestable independently and harder to reason about.
+- Placing it inside the executor would conflate two distinct responsibilities in one function.
+- A dedicated graph node makes the dependency explicit in the graph topology and independently observable in the LangGraph stream output.
+- `source_code/reclassify.py` (not `agents/`) signals that this module performs no LLM call and holds no prompt. The `agents/` directory is reserved for LLM-driven components.
+
+**Fallback path:** If `state["output_path"]` is absent, the fallback is `"standardized_output_renamed.csv"` — matching `rename_executor_agent`'s default output path. If that file does not exist, `pd.read_csv()` raises `FileNotFoundError` immediately (fail-fast; no silent data corruption).

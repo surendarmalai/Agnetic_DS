@@ -1,0 +1,5 @@
+# Development / test dependencies only.
+# Production dependencies (langchain, pandas, etc.) are not listed here.
+# Note: langchain-ollama is required only when LLM_PROVIDER=ollama.
+pytest>=7.0
+pytest-json-report>=1.5

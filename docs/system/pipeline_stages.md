@@ -44,22 +44,40 @@ This context is loaded into `AgentState` as `special_rules` + uploaded file cont
 ---
 
 ## Stage 3 — Column Standardization
-**Status:** 🔧 Done, untested (Agent 1 + Executor 1)
+**Status:** ✅ Done & tested (Agent 1 + Executor 1)
 
 - Strips SQL aliases, lowercases column names
-- LLM maps raw names to PascalCase telecom-standard names
-- **[INTERRUPT]** Human resolves ambiguous column mappings
-- Executor applies rename
+- LLM maps raw names to PascalCase telecom-standard names via `make_field_renamer_agent(config)`
+- **[INTERRUPT]** Human resolves ambiguous column mappings (not yet wired — interrupt() not implemented)
+- `rename_executor_agent` applies composite rename map (no exec(); map reconstruction from `column_map` + `preprocess_column_names`)
+- Output saved to `standardized_output_renamed.csv`
+- `reclassify_columns_node` re-classifies columns on post-rename CSV before Stage 4
+
+**Test coverage:** 9 TCs for Agent 1 (TC1–TC9): 6 PASS, 3 xfail (duplicate map targets, partial map, key mismatch not validated). Executor covered by TC18–TC23.
+
+---
+
+## Stage 3.5 — Column Reclassification (new node)
+**Status:** ✅ Done & tested
+
+- Intermediate step between Stage 3 executor and Stage 4 agent
+- `reclassify_columns_node` reads post-rename CSV and re-runs `classify_columns`, `build_value_counts_summary`, `build_null_summary`
+- Overwrites the pre-rename metadata with post-rename metadata in state
+- Ensures Agent 2 sees correctly-named columns in its prompt
+- Lives in `source_code/reclassify.py` (not in `agents/` — it is infrastructure, not an LLM agent)
 
 ---
 
 ## Stage 4 — Field Cleaning
-**Status:** 🔧 Done, untested (Agent 2 + Executor 2)
+**Status:** ✅ Done & tested (Agent 2 + Executor 2)
 
-- Classifies columns: categorical / numeric-like (dirty) / true numeric
-- LLM writes cleaning code: fixes encoding, standardizes categoricals, converts dirty numerics
-- **[INTERRUPT]** Human reviews flagged columns that couldn't be safely cleaned
-- Executor applies cleaning
+- Classifies columns: categorical / numeric-like (dirty) / true numeric (metadata refreshed by Stage 3.5)
+- LLM writes cleaning code via `make_field_cleaner_agent(config)`: fixes encoding, standardizes categoricals, converts dirty numerics
+- **[INTERRUPT]** Human reviews flagged columns that couldn't be safely cleaned (not yet wired — interrupt() not implemented)
+- `cleaning_executor_agent` runs cleaning code via exec() with `_check_safety` post-exec checks
+- Output saved to `output_agent2_cleaned.csv`
+
+**Test coverage:** 8 TCs for Agent 2 (TC10–TC17): 7 PASS (including TC15 xpassed), 1 xfail (TC16: agent does not detect column drops in generated code). Executor safety checks confirmed by TC21, TC22 (both xpassed — performed better than expected).
 
 ---
 
